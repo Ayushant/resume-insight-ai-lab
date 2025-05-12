@@ -6,110 +6,59 @@ import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { useOpenAI } from '@/hooks/useOpenAI';
+import { Input } from '@/components/ui/input';
 
 const Analysis: React.FC = () => {
   const [resumeContent, setResumeContent] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisComplete, setAnalysisComplete] = useState<boolean>(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState<boolean>(false);
   
-  const analyzeResume = async () => {
+  const { data, loading: isAnalyzing, error, analyzeResume } = useOpenAI({ 
+    apiKey: apiKey || 'YOUR_API_KEY' // Replace with actual key in production
+  });
+  
+  // Update analysisData when OpenAI response is received
+  useEffect(() => {
+    if (data) {
+      setAnalysisData(data);
+      setAnalysisComplete(true);
+      toast.success("Analysis complete!");
+    }
+  }, [data]);
+
+  // Show error toast if API request fails
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+  
+  const handleAnalyzeResume = async () => {
     if (!resumeContent) {
       toast.error("Please upload a resume first");
       return;
     }
     
-    setIsAnalyzing(true);
+    if (!apiKey && !showApiKeyInput) {
+      setShowApiKeyInput(true);
+      toast.info("Please enter your OpenAI API key to continue");
+      return;
+    }
+    
+    if (showApiKeyInput && !apiKey) {
+      toast.error("Please enter your OpenAI API key");
+      return;
+    }
     
     try {
-      // In a real app, we'd make an API call to OpenAI here
-      // Since we're not connecting to real APIs, we'll simulate a response
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Mock response data
-      const mockAnalysisData = {
-        overview: {
-          readabilityScore: 7,
-          length: 'Appropriate (1 page)',
-          tone: 'Professional',
-          structure: 'Well-organized with clear sections',
-        },
-        grammarAndStyle: {
-          spellingErrors: 2,
-          grammarIssues: 3,
-          passiveVoice: 15,
-          clarityScore: 8,
-          issues: [
-            {
-              type: 'Passive Voice',
-              text: '...was implemented by our team...',
-              suggestion: 'I implemented with our team...',
-            },
-            {
-              type: 'Wordiness',
-              text: 'In order to achieve the desired results',
-              suggestion: 'To achieve results',
-            },
-            {
-              type: 'Spelling',
-              text: 'recieved',
-              suggestion: 'received',
-            },
-          ],
-        },
-        keywords: {
-          detected: [
-            { keyword: 'React', count: 4, relevance: 'high' },
-            { keyword: 'JavaScript', count: 3, relevance: 'high' },
-            { keyword: 'TypeScript', count: 2, relevance: 'medium' },
-            { keyword: 'Node.js', count: 2, relevance: 'medium' },
-            { keyword: 'Testing', count: 1, relevance: 'low' },
-            { keyword: 'API', count: 3, relevance: 'medium' },
-            { keyword: 'Development', count: 5, relevance: 'medium' },
-            { keyword: 'Software', count: 2, relevance: 'high' },
-          ],
-          missing: [
-            'CI/CD',
-            'Agile',
-            'Docker',
-            'Cloud',
-            'Python',
-            'Team Leadership',
-          ],
-          density: 5.2,
-        },
-        suggestions: {
-          critical: [
-            'Quantify achievements with metrics (e.g., "increased performance by 40%" instead of "improved performance")',
-            'Add specific technical skills relevant to the job description',
-            'Remove outdated technologies that are over 10 years old',
-          ],
-          important: [
-            'Use more action verbs at the beginning of bullet points',
-            'Expand on your most recent role with more accomplishments',
-            'Add a brief technical projects section to showcase practical skills',
-            'Improve your professional summary to highlight your unique value proposition',
-          ],
-          minor: [
-            'Consider using a cleaner, more modern formatting',
-            'Ensure consistent verb tense throughout the document',
-            'Add LinkedIn profile and GitHub links if applicable',
-            'Proofread for the spelling errors identified above',
-          ],
-        },
-      };
-      
-      setAnalysisData(mockAnalysisData);
-      setAnalysisComplete(true);
-      toast.success("Analysis complete!");
+      await analyzeResume(resumeContent);
     } catch (error) {
       console.error('Error analyzing resume:', error);
       toast.error("Failed to analyze resume. Please try again.");
-    } finally {
-      setIsAnalyzing(false);
     }
   };
   
@@ -140,9 +89,26 @@ const Analysis: React.FC = () => {
               />
             </div>
             
+            {showApiKeyInput && (
+              <div className="mb-6">
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4 mb-4">
+                  <p className="text-amber-800 dark:text-amber-300 text-sm">
+                    For security, enter your OpenAI API key. This will not be stored on our servers.
+                  </p>
+                </div>
+                <Input
+                  type="password"
+                  placeholder="Enter your OpenAI API key"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="mb-4"
+                />
+              </div>
+            )}
+            
             <div className="flex justify-center mt-8">
               <Button 
-                onClick={analyzeResume}
+                onClick={handleAnalyzeResume}
                 disabled={!resumeContent || isAnalyzing}
                 className="px-8 py-6 text-lg rounded-xl"
               >
